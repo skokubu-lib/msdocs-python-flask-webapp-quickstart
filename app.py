@@ -1,32 +1,22 @@
-import os
+import os  
+from slack_bolt import App  
+from slack_bolt.adapter.flask import SlackRequestHandler  
+from flask import Flask, request  
 
-from flask import (Flask, redirect, render_template, request,
-                   send_from_directory, url_for)
+app = App(token=os.environ["SLACK_BOT_TOKEN"], signing_secret=os.environ["SLACK_SIGNING_SECRET"])  
 
-app = Flask(__name__)
+@app.event("app_mention")  
+async def command_handler(body, say):  
+    text = body['event'].get('text')  
+    print(f"Received message: {text}")  
+    await say('おはよう！')  # この行を追加して、すぐに返答するようにします。  
+    if 'おはよう' in text:  
+        await say('おはよう！')  
 
+flask_app = Flask(__name__)  
+handler = SlackRequestHandler(app)  
 
-@app.route('/')
-def index():
-   print('Request for index page received')
-   return render_template('index.html')
-
-@app.route('/favicon.ico')
-def favicon():
-    return send_from_directory(os.path.join(app.root_path, 'static'),
-                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
-
-@app.route('/hello', methods=['POST'])
-def hello():
-   name = request.form.get('name')
-
-   if name:
-       print('Request for hello page received with name=%s' % name)
-       return render_template('hello.html', name = name)
-   else:
-       print('Request for hello page received with no name or blank name -- redirecting')
-       return redirect(url_for('index'))
-
-
-if __name__ == '__main__':
-   app.run()
+@flask_app.route("/slack/events", methods=["POST"])  
+def slack_events():  
+    print("Received request at /slack/events")  # この行を追加  
+    return handler.handle(request) 
